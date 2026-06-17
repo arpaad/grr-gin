@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# grr-gin depends on grr via a local replace directive (../grr). Each job
+# checks out grr as a sibling so the replace path resolves correctly.
+# Once grr is published and grr-gin's go.mod is updated to a real version,
+# the extra checkout steps can be removed.
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: grr-gin
+      - uses: actions/checkout@v4
+        with:
+          repository: arpaad/grr
+          path: grr
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - run: go build ./...
+        working-directory: grr-gin
+      - run: go vet ./...
+        working-directory: grr-gin
+      - run: go test ./... -race -cover
+        working-directory: grr-gin
+
+  tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: grr-gin
+      - uses: actions/checkout@v4
+        with:
+          repository: arpaad/grr
+          path: grr
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - run: go mod tidy
+        working-directory: grr-gin
+      - run: git diff --exit-code go.mod go.sum
+        working-directory: grr-gin
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: grr-gin
+      - uses: actions/checkout@v4
+        with:
+          repository: arpaad/grr
+          path: grr
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.12.2
+          working-directory: grr-gin
